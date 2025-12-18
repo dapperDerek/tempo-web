@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { couple } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 // POST /api/couple/join - Join an existing couple using invite code
 export async function POST(req: NextRequest) {
@@ -50,7 +50,12 @@ export async function POST(req: NextRequest) {
     const existingCouple = await db
       .select()
       .from(couple)
-      .where(eq(couple.userId, session.user.id))
+      .where(
+        or(
+          eq(couple.herUserId, session.user.id),
+          eq(couple.himUserId, session.user.id)
+        )
+      )
       .limit(1);
 
     if (existingCouple.length > 0) {
@@ -72,9 +77,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user is trying to join their own couple
-    if (profile.userId === session.user.id) {
+    if (
+      profile.herUserId === session.user.id ||
+      profile.himUserId === session.user.id
+    ) {
       return NextResponse.json(
-        { error: "You cannot join your own couple profile. Share the invite code with your partner." },
+        {
+          error:
+            "You cannot join your own couple profile. Share the invite code with your partner.",
+        },
         { status: 400 }
       );
     }

@@ -7,18 +7,17 @@ This is the backend API for **Tempo** - a couples communication tool that helps 
 ## Core Philosophy
 
 Tempo is built for **couples**, not individuals. Both partners use the app together:
+
 - **Her**: Provides daily mood and period check-ins, views calendar with cycle tracking
-- **Him**: Receives daily context cards and mood-enhanced insights to better support his partner
-- **Together**: Set up the profile collaboratively with shared cycle data (opt-in)
+- **Him**: Receives mood and cycle insights to better support his partner
+- **Together**: Set up the profile collaboratively with invite codes
 
 ## Core Features
 
-- **Couple Profile Management** - Set up together during onboarding with invite codes
-- **Role-Based Access** - Her creates check-ins, Him receives context
-- **Daily Mood Check-Ins** - She shares how she's feeling, he gets tailored guidance
+- **Couple Profile Management** - Simple setup with invite codes for partners to join
+- **Role-Based Access** - Her creates check-ins, Him receives insights
+- **Daily Mood Check-Ins** - She shares how she's feeling
 - **Minimal Period Tracking** - Simple binary check-ins to keep cycle data accurate
-- **Daily Context Cards** - Science-based insights for Him
-- **Enhanced Context Cards** - Mood + cycle phase interpretations
 - **Calendar View** - Monthly overview with moods, phases, and period days (Her only)
 
 ---
@@ -30,6 +29,7 @@ The API uses Better Auth with email/password authentication. All authentication 
 ### Authentication Endpoints
 
 #### Sign Up
+
 ```
 POST /api/auth/sign-up/email
 Content-Type: application/json
@@ -42,6 +42,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "user": {
@@ -59,6 +60,7 @@ Content-Type: application/json
 ```
 
 #### Sign In
+
 ```
 POST /api/auth/sign-in/email
 Content-Type: application/json
@@ -70,6 +72,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "user": {
@@ -87,6 +90,7 @@ Content-Type: application/json
 ```
 
 #### Sign Out
+
 ```
 POST /api/auth/sign-out
 Content-Type: application/json
@@ -94,6 +98,7 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -101,12 +106,14 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 #### Get Session
+
 ```
 GET /api/auth/get-session
 Cookie: better-auth.session_token=<session_token>
 ```
 
 **Response:**
+
 ```json
 {
   "user": {
@@ -128,12 +135,14 @@ Cookie: better-auth.session_token=<session_token>
 ## Protected API Endpoints
 
 ### Get Current User
+
 ```
 GET /api/user
 Cookie: better-auth.session_token=<session_token>
 ```
 
 **Response:**
+
 ```json
 {
   "user": {
@@ -150,6 +159,7 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 **Error Response (401 Unauthorized):**
+
 ```json
 {
   "error": "Unauthorized"
@@ -161,46 +171,31 @@ Cookie: better-auth.session_token=<session_token>
 ## Couple Profile Endpoints
 
 ### Get Couple Profile
+
 ```
 GET /api/couple
 Cookie: better-auth.session_token=<session_token>
 ```
 
 **Response:**
+
 ```json
 {
   "couple": {
     "id": "couple_id",
-    "userId": "user_id",
     "herUserId": "her_user_id",
     "himUserId": "him_user_id",
-    "partnerName": "Sarah",
     "cycleLength": 28,
     "periodLength": 5,
-    "lastPeriodStart": "2025-12-01T00:00:00.000Z",
-    "onboardingComplete": true,
-    "notificationTime": "09:00",
-    "cycleTrackingShared": true,
     "inviteCode": "ABC123",
-    "createdAt": "2025-12-01T12:00:00.000Z",
-    "updatedAt": "2025-12-15T10:00:00.000Z"
+    "createdAt": "2025-12-01T12:00:00.000Z"
   },
-  "preferences": [
-    {
-      "id": "pref_1",
-      "coupleId": "couple_id",
-      "phase": "menstrual",
-      "smartMoves": "[\"Offer heat pack\", \"Handle dinner\"]",
-      "avoidances": "[\"Don't plan heavy activities\"]",
-      "createdAt": "2025-12-01T12:00:00.000Z",
-      "updatedAt": "2025-12-01T12:00:00.000Z"
-    }
-  ],
   "role": "him"
 }
 ```
 
 If no couple profile exists:
+
 ```json
 {
   "couple": null
@@ -208,67 +203,54 @@ If no couple profile exists:
 ```
 
 ### Create/Update Couple Profile
+
 ```
 POST /api/couple
 Content-Type: application/json
 Cookie: better-auth.session_token=<session_token>
 
 {
-  "partnerName": "Sarah",
   "role": "him",
   "cycleLength": 28,
-  "periodLength": 5,
-  "lastPeriodStart": "2025-12-01",
-  "notificationTime": "09:00",
-  "preferences": [
-    {
-      "phase": "menstrual",
-      "smartMoves": ["Offer heat pack", "Handle dinner"],
-      "avoidances": ["Don't plan heavy activities"]
-    },
-    {
-      "phase": "follicular",
-      "smartMoves": ["Good time for date nights"],
-      "avoidances": []
-    },
-    {
-      "phase": "ovulation",
-      "smartMoves": ["Compliment her", "Plan quality time"],
-      "avoidances": []
-    },
-    {
-      "phase": "luteal",
-      "smartMoves": ["Give space when needed", "Validate feelings"],
-      "avoidances": ["Avoid criticism"]
-    }
-  ]
+  "periodLength": 5
 }
 ```
 
 **Notes:**
-- `role`: "him" or "her" - indicates who is creating the profile
+
+- `role`: **REQUIRED** - Must be "him" or "her" - indicates who is creating the profile
 - Setting a role will populate either `herUserId` or `himUserId` fields
 - An `inviteCode` is automatically generated for partner to join
-- If updating existing profile, role fields are preserved
+- `cycleLength` and `periodLength` are optional (defaults: 28 and 5)
 
 **Response:**
+
 ```json
 {
-  "couple": { /* updated couple object */ },
-  "preferences": [ /* array of preference objects */ ],
+  "couple": {
+    "id": "couple_id",
+    "herUserId": null,
+    "himUserId": "user_id",
+    "cycleLength": 28,
+    "periodLength": 5,
+    "inviteCode": "ABC123",
+    "createdAt": "2025-12-01T12:00:00.000Z"
+  },
   "role": "him",
   "inviteCode": "ABC123"
 }
 ```
 
 **Validation Errors (400):**
+
 ```json
 {
-  "error": "Partner name and last period start date are required"
+  "error": "Role is required and must be 'him' or 'her'"
 }
 ```
 
 ### Join Couple via Invite Code
+
 ```
 POST /api/couple/join
 Content-Type: application/json
@@ -281,16 +263,20 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 **Notes:**
+
 - Partner uses this endpoint to join an existing couple profile
 - `role`: "him" or "her" - must match the available role in the couple
 - User cannot join if they're already part of another couple
 - Cannot join if the role is already filled
 
 **Response:**
+
 ```json
 {
   "success": true,
-  "couple": { /* couple object with updated herUserId or himUserId */ },
+  "couple": {
+    /* couple object with updated herUserId or himUserId */
+  },
   "role": "her"
 }
 ```
@@ -298,6 +284,7 @@ Cookie: better-auth.session_token=<session_token>
 **Error Responses:**
 
 Invalid invite code (404):
+
 ```json
 {
   "error": "Invalid invite code"
@@ -305,6 +292,7 @@ Invalid invite code (404):
 ```
 
 Already part of a couple (400):
+
 ```json
 {
   "error": "You are already part of a couple profile"
@@ -312,6 +300,7 @@ Already part of a couple (400):
 ```
 
 Role already filled (400):
+
 ```json
 {
   "error": "The 'her' role is already filled in this couple"
@@ -323,6 +312,7 @@ Role already filled (400):
 ## Mood Check-In Endpoints (Her Only)
 
 ### Create/Update Today's Mood Check-In
+
 ```
 POST /api/mood-checkin
 Content-Type: application/json
@@ -335,6 +325,7 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 **Allowed Moods:**
+
 - `anxious`
 - `calm`
 - `content`
@@ -347,14 +338,15 @@ Cookie: better-auth.session_token=<session_token>
 - `stressed`
 - `tired`
 
-
 **Notes:**
+
 - Only Her can create mood check-ins
 - If check-in already exists for today, it will be updated
 - Note is optional
 - Triggers enhanced context card for Him
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -371,6 +363,7 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 **Error Response (403 Forbidden):**
+
 ```json
 {
   "error": "This action can only be performed by Her"
@@ -378,12 +371,14 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 ### Get Latest Mood Check-In
+
 ```
 GET /api/mood-checkin
 Cookie: better-auth.session_token=<session_token>
 ```
 
 **Response:**
+
 ```json
 {
   "checkIn": {
@@ -398,6 +393,7 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 If no check-ins exist:
+
 ```json
 {
   "checkIn": null
@@ -405,12 +401,14 @@ If no check-ins exist:
 ```
 
 ### Get Today's Mood Check-In
+
 ```
 GET /api/mood-checkin/today
 Cookie: better-auth.session_token=<session_token>
 ```
 
 **Response:**
+
 ```json
 {
   "checkIn": {
@@ -425,6 +423,7 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 If no check-in for today:
+
 ```json
 {
   "checkIn": null
@@ -436,6 +435,7 @@ If no check-in for today:
 ## Period Check-In Endpoints (Her Only)
 
 ### Log Today's Period Status
+
 ```
 POST /api/period-checkin
 Content-Type: application/json
@@ -447,12 +447,13 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 **Notes:**
+
 - Only Her can create period check-ins
 - Binary status: `true` if period is active today, `false` if not
-- If `isActive: true` and it's a new period start, automatically updates `couple.lastPeriodStart`
-- Updates shared cycle tracking if `cycleTrackingShared: true`
+- Period check-ins are used to calculate cycle phases and track history
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -466,6 +467,7 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 **Error Response (403 Forbidden):**
+
 ```json
 {
   "error": "This action can only be performed by Her"
@@ -473,15 +475,18 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 ### Get Recent Period Check-Ins
+
 ```
 GET /api/period-checkin?limit=30
 Cookie: better-auth.session_token=<session_token>
 ```
 
 **Query Parameters:**
+
 - `limit`: Number of check-ins to return (default: 30)
 
 **Response:**
+
 ```json
 {
   "checkIns": [
@@ -506,20 +511,24 @@ Cookie: better-auth.session_token=<session_token>
 ## Calendar Endpoint (Her Only)
 
 ### Get Monthly Calendar View
+
 ```
 GET /api/calendar?year=2025&month=12
 Cookie: better-auth.session_token=<session_token>
 ```
 
 **Query Parameters:**
+
 - `year`: Year (default: current year)
 - `month`: Month 1-12 (default: current month)
 
 **Notes:**
+
 - Only Her can access calendar
 - Returns full month view with cycle phases, moods, and period status
 
 **Response:**
+
 ```json
 {
   "year": 2025,
@@ -550,187 +559,10 @@ Cookie: better-auth.session_token=<session_token>
 ```
 
 **Error Response (403 Forbidden):**
+
 ```json
 {
   "error": "This action can only be performed by Her"
-}
-```
-
----
-
-## Daily Context Card Endpoints
-
-### Get Today's Basic Context Card (Him)
-```
-GET /api/daily-card
-Cookie: better-auth.session_token=<session_token>
-```
-
-**Response:**
-```json
-{
-  "date": "2025-12-16",
-  "phase": "luteal",
-  "phaseTitle": "Luteal Phase",
-  "dayOfCycle": 18,
-  "daysUntilNextPeriod": 11,
-  "whatIsHappening": "Progesterone rises, then both estrogen and progesterone drop...",
-  "commonMisreads": [
-    "Sensitivity isn't overreacting—her nervous system is genuinely more reactive",
-    "Irritability isn't about you—it's hormonal turbulence"
-  ],
-  "smartMoves": [
-    "Give space when she needs it, closeness when she asks",
-    "Avoid criticism or jokes that might land wrong",
-    "Validate feelings without trying to fix them"
-  ],
-  "article": {
-    "id": "article_123",
-    "title": "Understanding the Luteal Phase",
-    "summary": "Learn why emotions feel bigger during this phase...",
-    "readTime": 3
-  }
-}
-```
-
-**Onboarding Required (404):**
-```json
-{
-  "error": "Couple profile not found. Complete onboarding first.",
-  "onboardingRequired": true
-}
-```
-
-### Get Enhanced Daily Card with Mood Context (Him Only)
-```
-GET /api/daily-card/enhanced
-Cookie: better-auth.session_token=<session_token>
-```
-
-**Notes:**
-- Only Him can access enhanced card
-- Only returns data if She completed a mood check-in today
-- Combines cycle phase + mood for tailored interpretation
-
-**Response:**
-```json
-{
-  "enhancedCard": {
-    "date": "2025-12-16",
-    "phase": "luteal",
-    "phaseTitle": "Luteal Phase",
-    "dayOfCycle": 18,
-    "mood": "stressed",
-    "moodNote": "Big presentation at work today",
-    "moodContext": {
-      "interpretation": "Progesterone drop + stress = heightened reactivity. Her nervous system is genuinely more sensitive right now.",
-      "smartMoves": [
-        "Extra patience is essential",
-        "Reduce stressors where possible",
-        "Validate feelings without trying to fix"
-      ]
-    }
-  }
-}
-```
-
-If no mood check-in today:
-```json
-{
-  "enhancedCard": null
-}
-```
-
-**Error Response (403 Forbidden):**
-```json
-{
-  "error": "This action can only be performed by Him"
-}
-```
-
----
-
-## Cycle Tracking Endpoints
-
-### Log Period Start (Her Only)
-```
-POST /api/cycle-update
-Content-Type: application/json
-Cookie: better-auth.session_token=<session_token>
-
-{
-  "periodStart": "2025-12-15"
-}
-```
-
-**Notes:**
-- Only Her can log period starts
-- Updates `couple.lastPeriodStart` if `cycleTrackingShared: true`
-- Creates historical record in `cycleUpdates` table
-
-**Response:**
-```json
-{
-  "success": true,
-  "cycleUpdate": {
-    "id": "update_id",
-    "periodStart": "2025-12-15T00:00:00.000Z"
-  }
-}
-```
-
-**Error Responses:**
-
-No couple profile (404):
-```json
-{
-  "error": "Couple profile not found. Complete onboarding first."
-}
-```
-
-Missing date (400):
-```json
-{
-  "error": "Period start date is required"
-}
-```
-
-Not authorized (403):
-```json
-{
-  "error": "This action can only be performed by Her"
-}
-```
-
----
-
-## Article Endpoints
-
-### Get Full Article
-```
-GET /api/articles/[id]
-Cookie: better-auth.session_token=<session_token>
-```
-
-**Response:**
-```json
-{
-  "id": "article_123",
-  "phase": "luteal",
-  "title": "Understanding the Luteal Phase",
-  "content": "Full markdown content of the article...",
-  "summary": "Learn why emotions feel bigger during this phase...",
-  "readTime": 3,
-  "published": true,
-  "createdAt": "2025-12-01T12:00:00.000Z",
-  "updatedAt": "2025-12-01T12:00:00.000Z"
-}
-```
-
-**Not Found (404):**
-```json
-{
-  "error": "Article not found"
 }
 ```
 
@@ -739,11 +571,13 @@ Cookie: better-auth.session_token=<session_token>
 ## Health Check
 
 ### Check API Status
+
 ```
 GET /api/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "ok",
@@ -756,20 +590,17 @@ GET /api/health
 
 ## Access Control Summary
 
-| Endpoint | Her | Him | Both |
-|----------|-----|-----|------|
-| GET /api/couple | ✓ | ✓ | ✓ |
-| POST /api/couple | ✓ | ✓ | ✓ |
-| POST /api/couple/join | ✓ | ✓ | ✓ |
-| POST /api/mood-checkin | ✓ | ✗ | ✗ |
-| GET /api/mood-checkin | ✓ | ✓ | ✓ |
-| GET /api/mood-checkin/today | ✓ | ✓ | ✓ |
-| POST /api/period-checkin | ✓ | ✗ | ✗ |
-| GET /api/period-checkin | ✓ | ✓ | ✓ |
-| GET /api/calendar | ✓ | ✗ | ✗ |
-| GET /api/daily-card | ✗ | ✓ | ✗ |
-| GET /api/daily-card/enhanced | ✗ | ✓ | ✗ |
-| POST /api/cycle-update | ✓ | ✗ | ✗ |
+| Endpoint                    | Her | Him | Both |
+| --------------------------- | --- | --- | ---- |
+| GET /api/couple             | ✓   | ✓   | ✓    |
+| POST /api/couple            | ✓   | ✓   | ✓    |
+| POST /api/couple/join       | ✓   | ✓   | ✓    |
+| POST /api/mood-checkin      | ✓   | ✗   | ✗    |
+| GET /api/mood-checkin       | ✓   | ✓   | ✓    |
+| GET /api/mood-checkin/today | ✓   | ✓   | ✓    |
+| POST /api/period-checkin    | ✓   | ✗   | ✗    |
+| GET /api/period-checkin     | ✓   | ✓   | ✓    |
+| GET /api/calendar           | ✓   | ✗   | ✗    |
 
 ---
 
@@ -778,6 +609,7 @@ GET /api/health
 The API is configured to accept requests from your Expo mobile app. By default, it allows requests from `http://localhost:8081` (Expo default).
 
 To configure for production:
+
 1. Update the `CORS_ORIGIN` environment variable in `.env.local`
 2. The middleware will automatically handle CORS headers
 
@@ -788,15 +620,16 @@ To configure for production:
 Better Auth uses secure HTTP-only cookies for session management. When making requests from your Expo app:
 
 1. Include credentials in your fetch requests:
+
 ```javascript
-fetch('http://localhost:3000/api/mood-checkin', {
-  method: 'POST',
-  credentials: 'include',
+fetch("http://localhost:3000/api/mood-checkin", {
+  method: "POST",
+  credentials: "include",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
-  body: JSON.stringify({ mood: 'energized' }),
-})
+  body: JSON.stringify({ mood: "energized" }),
+});
 ```
 
 2. The session cookie will be automatically included in subsequent requests
@@ -806,6 +639,7 @@ fetch('http://localhost:3000/api/mood-checkin', {
 ## Error Handling
 
 All endpoints return appropriate HTTP status codes:
+
 - `200` - Success
 - `400` - Bad Request (invalid input)
 - `401` - Unauthorized (missing or invalid session)
@@ -814,6 +648,7 @@ All endpoints return appropriate HTTP status codes:
 - `500` - Internal Server Error
 
 Error responses follow this format:
+
 ```json
 {
   "error": "Error message description"
@@ -846,60 +681,56 @@ export const { signIn, signUp, signOut, useSession } = authClient;
 ### Example: Couples Onboarding Flow
 
 ```typescript
-import { useState } from 'react';
-import { signUp } from '@/lib/auth';
+import { useState } from "react";
+import { signUp } from "@/lib/auth";
 
 // Step 1: First partner signs up and creates couple profile
 const handleCreateCouple = async () => {
   // Sign up
   const { data: authData } = await signUp.email({
-    email: 'john@example.com',
-    password: 'password123',
-    name: 'John',
+    email: "john@example.com",
+    password: "password123",
+    name: "John",
   });
 
   // Create couple profile with role
-  const response = await fetch('http://localhost:3000/api/couple', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+  const response = await fetch("http://localhost:3000/api/couple", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      partnerName: 'Sarah',
-      role: 'him', // John is setting this up
+      role: "him", // John is setting this up
       cycleLength: 28,
       periodLength: 5,
-      lastPeriodStart: '2025-12-01',
-      notificationTime: '09:00',
-      preferences: [/* phase preferences */],
     }),
   });
 
   const { inviteCode } = await response.json();
-  console.log('Share this code with your partner:', inviteCode);
+  console.log("Share this code with your partner:", inviteCode);
 };
 
 // Step 2: Partner joins using invite code
 const handleJoinCouple = async (inviteCode: string) => {
   // Sign up
   const { data: authData } = await signUp.email({
-    email: 'sarah@example.com',
-    password: 'password123',
-    name: 'Sarah',
+    email: "sarah@example.com",
+    password: "password123",
+    name: "Sarah",
   });
 
   // Join couple
-  const response = await fetch('http://localhost:3000/api/couple/join', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+  const response = await fetch("http://localhost:3000/api/couple/join", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       inviteCode,
-      role: 'her',
+      role: "her",
     }),
   });
 
   const data = await response.json();
-  console.log('Joined couple:', data.couple);
+  console.log("Joined couple:", data.couple);
 };
 ```
 
@@ -908,10 +739,10 @@ const handleJoinCouple = async (inviteCode: string) => {
 ```typescript
 // Mood check-in
 const logMood = async (mood: string, note?: string) => {
-  const response = await fetch('http://localhost:3000/api/mood-checkin', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+  const response = await fetch("http://localhost:3000/api/mood-checkin", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mood, note }),
   });
   return response.json();
@@ -919,10 +750,10 @@ const logMood = async (mood: string, note?: string) => {
 
 // Period check-in
 const logPeriod = async (isActive: boolean) => {
-  const response = await fetch('http://localhost:3000/api/period-checkin', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+  const response = await fetch("http://localhost:3000/api/period-checkin", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ isActive }),
   });
   return response.json();
@@ -932,37 +763,9 @@ const logPeriod = async (isActive: boolean) => {
 const fetchCalendar = async (year: number, month: number) => {
   const response = await fetch(
     `http://localhost:3000/api/calendar?year=${year}&month=${month}`,
-    { credentials: 'include' }
+    { credentials: "include" }
   );
   return response.json();
-};
-```
-
-### Example: Him's Daily Cards
-
-```typescript
-// Get basic daily card
-const fetchDailyCard = async () => {
-  const response = await fetch('http://localhost:3000/api/daily-card', {
-    credentials: 'include',
-  });
-  return response.json();
-};
-
-// Get enhanced card (with mood context)
-const fetchEnhancedCard = async () => {
-  const response = await fetch('http://localhost:3000/api/daily-card/enhanced', {
-    credentials: 'include',
-  });
-  const data = await response.json();
-
-  if (data.enhancedCard) {
-    // She checked in today, show enhanced context
-    return data.enhancedCard;
-  }
-
-  // No mood check-in, fall back to basic card
-  return null;
 };
 ```
 
@@ -986,5 +789,40 @@ Required environment variables (see `.env.example`):
 - Update `CORS_ORIGIN` to match your production Expo app URL
 - Regularly update dependencies for security patches
 - Consider implementing rate limiting for authentication endpoints
-- Role-based access control ensures Her can't see Him's cards and vice versa
-- `cycleTrackingShared` flag gives Her control over data sharing
+- Role-based access control ensures proper separation of concerns between partners
+
+---
+
+## API Changelog
+
+### 2025-12-17 - Major Simplification
+
+**Breaking Changes:**
+
+- **Database Schema Simplified:**
+  - Removed `userId` field from couple table (only `herUserId` and `himUserId` remain)
+  - Removed `partnerName`, `lastPeriodStart`, `onboardingComplete`, `notificationTime`, `cycleTrackingShared`, `updatedAt` fields from couple table
+  - Removed `phasePreferences` table entirely (use hardcoded phase guidance instead)
+  - Removed `cycleUpdates` table entirely (period check-ins are the single source of truth)
+  - Removed `articles` table (move to static content/CMS)
+
+- **API Changes:**
+  - `POST /api/couple` - Simplified request body (removed `partnerName`, `lastPeriodStart`, `notificationTime`, `preferences`)
+  - `GET /api/couple` - Simplified response (removed `preferences`, removed extra fields from couple object)
+  - Removed `POST /api/cycle-update` endpoint (redundant with period check-ins)
+  - Removed `GET /api/daily-card` endpoint (to be reimplemented with static content)
+  - Removed `GET /api/daily-card/enhanced` endpoint (to be reimplemented with static content)
+  - Removed `GET /api/articles/[id]` endpoint (to be reimplemented with static content)
+  - `POST /api/period-checkin` - No longer updates `couple.lastPeriodStart` (uses period check-ins directly)
+  - `GET /api/calendar` - Now calculates last period start from period check-ins dynamically
+
+**New Features:**
+
+- Added `getLastPeriodStart()` helper function in `lib/cycle-calculator.ts` to calculate last period start from check-ins
+
+**Migration:**
+
+- Run `npm run db:push` to apply database migration (migration file: `drizzle/0003_common_scarlet_witch.sql`)
+- Period tracking data is preserved in `periodCheckIns` table
+- Mood check-ins data is preserved
+- Historical cycle updates and preferences are deleted

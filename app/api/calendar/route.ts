@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { moodCheckIns, periodCheckIns } from "@/lib/db/schema";
 import { getUserCoupleContext, requireHerRole } from "@/lib/couple-auth";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { calculateCycleInfo } from "@/lib/cycle-calculator";
+import { calculateCycleInfo, getLastPeriodStart } from "@/lib/cycle-calculator";
 
 // GET /api/calendar - Get calendar view with cycle and mood data (Her only)
 export async function GET(req: NextRequest) {
@@ -62,9 +62,19 @@ export async function GET(req: NextRequest) {
         )
       );
 
+    // Get last period start from check-ins
+    const lastPeriodStart = await getLastPeriodStart(context.coupleId);
+
+    if (!lastPeriodStart) {
+      return NextResponse.json(
+        { error: "No period data found. Please log a period check-in first." },
+        { status: 404 }
+      );
+    }
+
     // Calculate cycle info for today
     const cycleInfo = calculateCycleInfo(
-      context.couple.lastPeriodStart,
+      lastPeriodStart,
       context.couple.cycleLength,
       context.couple.periodLength
     );
@@ -85,7 +95,7 @@ export async function GET(req: NextRequest) {
 
       // Calculate cycle day for this date
       const dayInfo = calculateCycleInfo(
-        context.couple.lastPeriodStart,
+        lastPeriodStart,
         context.couple.cycleLength,
         context.couple.periodLength,
         date

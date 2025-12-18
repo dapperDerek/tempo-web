@@ -13,14 +13,23 @@ This guide covers deployment options for the Tempo Web API.
 Before deploying, ensure you have these environment variables configured:
 
 ```bash
-# Required
+# Required - Server-side
 BETTER_AUTH_SECRET=<generate-a-secure-random-string-min-32-chars>
 BETTER_AUTH_URL=<your-production-url>
 DATABASE_PATH=file:./tempo.db
 
+# Required - Client-side (for web app)
+NEXT_PUBLIC_BETTER_AUTH_URL=<your-production-url>
+
 # Optional
 CORS_ORIGIN=<your-expo-app-url>
 ```
+
+**Important Notes:**
+- `BETTER_AUTH_SECRET` must be at least 32 characters
+- `BETTER_AUTH_URL` should match your deployment URL (e.g., `https://api.tempo.com`)
+- `NEXT_PUBLIC_BETTER_AUTH_URL` must be set for client-side auth to work
+- `CORS_ORIGIN` should be set to your Expo app URL for mobile access
 
 ### Generate Secure Secret
 
@@ -309,6 +318,30 @@ find $BACKUP_DIR -name "tempo.db.*" -mtime +7 -delete
    - Clear `.next` folder: `rm -rf .next`
    - Clear node_modules: `rm -rf node_modules && npm install`
    - Check Node.js version is 20+
+
+## API Documentation
+
+For complete API documentation including authentication, onboarding, and all endpoints:
+- See [API.md](./API.md) for comprehensive API documentation
+- Includes mobile integration examples
+- Documents all request/response formats
+- Lists breaking changes and bug fixes
+
+## Recent Updates (2025-12-17)
+
+**Authentication & Onboarding APIs are ready for mobile consumption:**
+
+1. **Breaking Change**: `role` parameter is now required in `POST /api/couple`
+   - Mobile apps must include `role: "her"` or `role: "him"` when creating couple profiles
+   - This ensures proper role assignment in the database
+
+2. **Bug Fix**: Duplicate couple membership check now covers all scenarios
+   - Users cannot join multiple couples via any pathway
+   - Validation checks `userId`, `herUserId`, and `himUserId` fields
+
+3. **Environment Variables**: Add `NEXT_PUBLIC_BETTER_AUTH_URL` for client-side auth
+   - Required for web app authentication to work
+   - Should match your `BETTER_AUTH_URL` value
 
 ## Support
 

@@ -20,11 +20,7 @@ export async function getUserCoupleContext(
     .select()
     .from(couple)
     .where(
-      or(
-        eq(couple.userId, userId),
-        eq(couple.herUserId, userId),
-        eq(couple.himUserId, userId)
-      )
+      or(eq(couple.herUserId, userId), eq(couple.himUserId, userId))
     )
     .limit(1);
 
@@ -70,7 +66,6 @@ export async function getCoupleRole(
 
   if (profile.herUserId === userId) return "her";
   if (profile.himUserId === userId) return "him";
-  if (profile.userId === userId) return null; // Legacy/incomplete setup
 
   return null;
 }

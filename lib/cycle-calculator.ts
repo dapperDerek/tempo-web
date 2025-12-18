@@ -1,5 +1,48 @@
+import { db } from "@/lib/db";
+import { periodCheckIns } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
+
 // Cycle phase calculator
 export type CyclePhase = "menstrual" | "follicular" | "ovulation" | "luteal";
+
+/**
+ * Get the last period start date from period check-ins
+ * Returns null if no period check-ins found
+ */
+export async function getLastPeriodStart(
+  coupleId: string
+): Promise<Date | null> {
+  const periodStarts = await db
+    .select()
+    .from(periodCheckIns)
+    .where(eq(periodCheckIns.coupleId, coupleId))
+    .orderBy(desc(periodCheckIns.date))
+    .limit(100);
+
+  // Find the most recent period start (first day of isActive=true streak)
+  for (let i = 0; i < periodStarts.length; i++) {
+    if (periodStarts[i].isActive) {
+      // Check if this is the start of a period (previous day was not active or doesn't exist)
+      if (i === 0) {
+        // Most recent check-in and it's active - this is the latest period start
+        return new Date(periodStarts[i].date);
+      }
+
+      const currentDate = new Date(periodStarts[i].date);
+      const previousDate = new Date(periodStarts[i - 1].date);
+      const dayDiff = Math.floor(
+        (previousDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // If there's a gap or the previous day wasn't active, this is a period start
+      if (dayDiff > 1 || !periodStarts[i - 1].isActive) {
+        return new Date(periodStarts[i].date);
+      }
+    }
+  }
+
+  return null;
+}
 
 export interface CycleInfo {
   phase: CyclePhase;

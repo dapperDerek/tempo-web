@@ -46,60 +46,15 @@ export const verification = sqliteTable("verification", {
   updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
 });
 
-// Couple profile - created together during onboarding
+// Couple profile - simplified structure
 export const couple = sqliteTable("couple", {
   id: text("id").primaryKey(),
-  userId: text("userId")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
   herUserId: text("herUserId").references(() => user.id, { onDelete: "cascade" }),
   himUserId: text("himUserId").references(() => user.id, { onDelete: "cascade" }),
-  partnerName: text("partnerName").notNull(),
   cycleLength: integer("cycleLength").notNull().default(28),
   periodLength: integer("periodLength").notNull().default(5),
-  lastPeriodStart: integer("lastPeriodStart", { mode: "timestamp" }).notNull(),
-  onboardingComplete: integer("onboardingComplete", { mode: "boolean" }).notNull().default(false),
-  notificationTime: text("notificationTime").default("09:00"), // Time for daily notification
-  cycleTrackingShared: integer("cycleTrackingShared", { mode: "boolean" }).notNull().default(true),
   inviteCode: text("inviteCode").unique(),
   createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
-});
-
-// Phase preferences - what she wants during each phase (set during onboarding)
-export const phasePreferences = sqliteTable("phasePreferences", {
-  id: text("id").primaryKey(),
-  coupleId: text("coupleId")
-    .notNull()
-    .references(() => couple.id, { onDelete: "cascade" }),
-  phase: text("phase").notNull(), // menstrual, follicular, ovulation, luteal
-  smartMoves: text("smartMoves").notNull(), // JSON array of smart moves
-  avoidances: text("avoidances").notNull(), // JSON array of things to avoid
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
-});
-
-// Cycle updates - track period starts to refine predictions
-export const cycleUpdates = sqliteTable("cycleUpdates", {
-  id: text("id").primaryKey(),
-  coupleId: text("coupleId")
-    .notNull()
-    .references(() => couple.id, { onDelete: "cascade" }),
-  periodStart: integer("periodStart", { mode: "timestamp" }).notNull(),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-});
-
-// Educational articles - science-based content per phase
-export const articles = sqliteTable("articles", {
-  id: text("id").primaryKey(),
-  phase: text("phase").notNull(), // menstrual, follicular, ovulation, luteal
-  title: text("title").notNull(),
-  content: text("content").notNull(),
-  summary: text("summary").notNull(),
-  readTime: integer("readTime").notNull().default(3), // minutes
-  published: integer("published", { mode: "boolean" }).notNull().default(true),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
 });
 
 // Mood check-ins - daily emotional state tracking (created by Her, consumed by Him)

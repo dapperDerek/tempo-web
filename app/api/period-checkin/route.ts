@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { periodCheckIns, couple } from "@/lib/db/schema";
+import { periodCheckIns } from "@/lib/db/schema";
 import { getUserCoupleContext, requireHerRole } from "@/lib/couple-auth";
 import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -58,17 +58,6 @@ export async function POST(req: NextRequest) {
         .set({ isActive })
         .where(eq(periodCheckIns.id, existing[0].id));
 
-      // If period just started, update couple.lastPeriodStart
-      if (isActive && context.couple.cycleTrackingShared) {
-        const todayDate = new Date();
-        todayDate.setHours(0, 0, 0, 0);
-
-        await db
-          .update(couple)
-          .set({ lastPeriodStart: todayDate })
-          .where(eq(couple.id, context.coupleId));
-      }
-
       return NextResponse.json({
         success: true,
         checkIn: {
@@ -89,23 +78,6 @@ export async function POST(req: NextRequest) {
       isActive,
       createdAt: new Date(),
     });
-
-    // If period started today, update couple.lastPeriodStart
-    if (isActive && context.couple.cycleTrackingShared) {
-      const todayDate = new Date();
-      todayDate.setHours(0, 0, 0, 0);
-
-      // Check if this is a new period (not same day as last period)
-      const lastPeriodDate = new Date(context.couple.lastPeriodStart);
-      lastPeriodDate.setHours(0, 0, 0, 0);
-
-      if (todayDate.getTime() !== lastPeriodDate.getTime()) {
-        await db
-          .update(couple)
-          .set({ lastPeriodStart: todayDate })
-          .where(eq(couple.id, context.coupleId));
-      }
-    }
 
     return NextResponse.json({
       success: true,
