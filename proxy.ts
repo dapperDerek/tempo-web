@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 export default async function proxy(request: NextRequest) {
-  // Skip authentication check for Better Auth endpoints
+  // Skip authentication check for Better Auth endpoints and signup flow
   if (request.nextUrl.pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }

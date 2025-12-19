@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { couple } from "@/lib/db/schema";
+import { couple, periodCheckIns } from "@/lib/db/schema";
 import { eq, or } from "drizzle-orm";
 
 // Generate a random 6-character invite code
@@ -12,6 +12,31 @@ function generateInviteCode(): string {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
+}
+
+// Generate a unique invite code (checks for collisions)
+async function generateUniqueInviteCode(): Promise<string> {
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (attempts < maxAttempts) {
+    const code = generateInviteCode();
+
+    // Check if code already exists
+    const existing = await db
+      .select()
+      .from(couple)
+      .where(eq(couple.inviteCode, code))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return code; // Unique code found
+    }
+
+    attempts++;
+  }
+
+  throw new Error("Failed to generate unique invite code after 10 attempts");
 }
 
 // GET /api/couple - Get couple profile
@@ -74,6 +99,7 @@ export async function POST(req: NextRequest) {
       cycleLength,
       periodLength,
       role, // "him" or "her" - who is creating this profile
+      lastPeriodStart, // Optional: YYYY-MM-DD format - used to create initial period check-in
     } = body;
 
     // Validation
@@ -125,7 +151,7 @@ export async function POST(req: NextRequest) {
         .where(eq(couple.id, existingCouple[0].id));
 
       coupleId = existingCouple[0].id;
-      inviteCode = existingCouple[0].inviteCode || generateInviteCode();
+      inviteCode = existingCouple[0].inviteCode || await generateUniqueInviteCode();
 
       // Update invite code if it wasn't set
       if (!existingCouple[0].inviteCode) {
@@ -137,7 +163,7 @@ export async function POST(req: NextRequest) {
     } else {
       // Create new
       coupleId = crypto.randomUUID();
-      inviteCode = generateInviteCode();
+      inviteCode = await generateUniqueInviteCode();
 
       await db.insert(couple).values({
         id: coupleId,
@@ -148,6 +174,27 @@ export async function POST(req: NextRequest) {
         inviteCode,
         createdAt: now,
       });
+    }
+
+    // Create initial period check-in if lastPeriodStart provided (Her only)
+    if (lastPeriodStart && role === "her") {
+      // Validate date format
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (dateRegex.test(lastPeriodStart)) {
+        try {
+          // Create period check-in for the last period start date
+          await db.insert(periodCheckIns).values({
+            id: crypto.randomUUID(),
+            coupleId,
+            date: lastPeriodStart,
+            isActive: true,
+            createdAt: now,
+          });
+        } catch (error) {
+          console.error("Error creating initial period check-in:", error);
+          // Don't fail the whole request if period check-in creation fails
+        }
+      }
     }
 
     // Fetch updated couple
