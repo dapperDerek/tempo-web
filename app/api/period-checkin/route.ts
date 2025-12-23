@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { periodCheckIns } from "@/lib/db/schema";
 import { getUserCoupleContext, requireHerRole } from "@/lib/couple-auth";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 // POST /api/period-checkin - Log period status for today (Her only)
@@ -16,11 +16,26 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { isActive } = body;
+    const { isActive, date } = body;
 
     if (typeof isActive !== "boolean") {
       return NextResponse.json(
         { error: "isActive must be a boolean" },
+        { status: 400 }
+      );
+    }
+
+    if (!date) {
+      return NextResponse.json(
+        { error: "Date is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return NextResponse.json(
+        { error: "Date must be in YYYY-MM-DD format" },
         { status: 400 }
       );
     }
@@ -37,16 +52,14 @@ export async function POST(req: NextRequest) {
     // Verify user has "her" role
     await requireHerRole(session.user.id, context.coupleId);
 
-    const today = new Date().toISOString().split("T")[0];
-
-    // Check if check-in already exists for today
+    // Check if check-in already exists for this date
     const existing = await db
       .select()
       .from(periodCheckIns)
       .where(
         and(
           eq(periodCheckIns.coupleId, context.coupleId),
-          eq(periodCheckIns.date, today)
+          eq(periodCheckIns.date, date)
         )
       )
       .limit(1);
@@ -62,7 +75,7 @@ export async function POST(req: NextRequest) {
         success: true,
         checkIn: {
           id: existing[0].id,
-          date: today,
+          date,
           isActive,
         },
         updated: true,
@@ -74,7 +87,7 @@ export async function POST(req: NextRequest) {
     await db.insert(periodCheckIns).values({
       id: checkInId,
       coupleId: context.coupleId,
-      date: today,
+      date,
       isActive,
       createdAt: new Date(),
     });
@@ -83,7 +96,7 @@ export async function POST(req: NextRequest) {
       success: true,
       checkIn: {
         id: checkInId,
-        date: today,
+        date,
         isActive,
       },
       updated: false,
@@ -105,7 +118,8 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET /api/period-checkin - Get recent period check-ins (Both can read)
+// GET /api/period-checkin - Get period check-ins (Both can read)
+// Supports query params: date (single date), startDate & endDate (date range), limit (number of records)
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
 
@@ -124,8 +138,63 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get("limit") || "30");
+    const date = searchParams.get("date");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const limit = parseInt(searchParams.get("limit") || "100");
 
+    // If specific date is requested
+    if (date) {
+      const checkIn = await db
+        .select()
+        .from(periodCheckIns)
+        .where(
+          and(
+            eq(periodCheckIns.coupleId, context.coupleId),
+            eq(periodCheckIns.date, date)
+          )
+        )
+        .limit(1);
+
+      if (checkIn.length === 0) {
+        return NextResponse.json({ checkIn: null });
+      }
+
+      return NextResponse.json({
+        checkIn: {
+          id: checkIn[0].id,
+          date: checkIn[0].date,
+          isActive: checkIn[0].isActive,
+          createdAt: checkIn[0].createdAt,
+        },
+      });
+    }
+
+    // If date range is requested
+    if (startDate && endDate) {
+      const checkIns = await db
+        .select()
+        .from(periodCheckIns)
+        .where(
+          and(
+            eq(periodCheckIns.coupleId, context.coupleId),
+            gte(periodCheckIns.date, startDate),
+            lte(periodCheckIns.date, endDate)
+          )
+        )
+        .orderBy(desc(periodCheckIns.date));
+
+      return NextResponse.json({
+        checkIns: checkIns.map((ci) => ({
+          id: ci.id,
+          date: ci.date,
+          isActive: ci.isActive,
+          createdAt: ci.createdAt,
+        })),
+      });
+    }
+
+    // Default: Get recent period check-ins with limit
     const checkIns = await db
       .select()
       .from(periodCheckIns)

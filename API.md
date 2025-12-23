@@ -320,9 +320,16 @@ Cookie: better-auth.session_token=<session_token>
 
 {
   "mood": "stressed",
-  "note": "Big presentation at work today"
+  "note": "Big presentation at work today",
+  "date": "2025-12-22"
 }
 ```
+
+**Request Parameters:**
+
+- `mood` (required): One of the allowed mood values
+- `note` (optional): Additional context about the mood
+- `date` (required): Date in YYYY-MM-DD format (in user's local timezone)
 
 **Allowed Moods:**
 
@@ -341,8 +348,8 @@ Cookie: better-auth.session_token=<session_token>
 **Notes:**
 
 - Only Her can create mood check-ins
-- If check-in already exists for today, it will be updated
-- Note is optional
+- If check-in already exists for the specified date, it will be updated
+- The date should be sent in the user's local timezone (YYYY-MM-DD format)
 - Triggers enhanced context card for Him
 
 **Response:**
@@ -370,14 +377,20 @@ Cookie: better-auth.session_token=<session_token>
 }
 ```
 
-### Get Latest Mood Check-In
+### Get Mood Check-In(s)
 
 ```
 GET /api/mood-checkin
 Cookie: better-auth.session_token=<session_token>
 ```
 
-**Response:**
+**Query Parameters (all optional):**
+
+- `date`: Get check-in for a specific date (format: YYYY-MM-DD)
+- `startDate` & `endDate`: Get all check-ins within a date range (format: YYYY-MM-DD)
+- No parameters: Returns the latest mood check-in
+
+**Response (no parameters - latest check-in):**
 
 ```json
 {
@@ -392,11 +405,67 @@ Cookie: better-auth.session_token=<session_token>
 }
 ```
 
+**Response (with date parameter):**
+
+```
+GET /api/mood-checkin?date=2025-12-15
+```
+
+```json
+{
+  "checkIn": {
+    "id": "checkin_id",
+    "coupleId": "couple_id",
+    "date": "2025-12-15",
+    "mood": "happy",
+    "note": null,
+    "createdAt": "2025-12-15T09:00:00.000Z"
+  }
+}
+```
+
+**Response (with date range):**
+
+```
+GET /api/mood-checkin?startDate=2025-12-01&endDate=2025-12-31
+```
+
+```json
+{
+  "checkIns": [
+    {
+      "id": "checkin_1",
+      "coupleId": "couple_id",
+      "date": "2025-12-16",
+      "mood": "stressed",
+      "note": "Big presentation at work today",
+      "createdAt": "2025-12-16T10:00:00.000Z"
+    },
+    {
+      "id": "checkin_2",
+      "coupleId": "couple_id",
+      "date": "2025-12-15",
+      "mood": "happy",
+      "note": null,
+      "createdAt": "2025-12-15T09:00:00.000Z"
+    }
+  ]
+}
+```
+
 If no check-ins exist:
 
 ```json
 {
   "checkIn": null
+}
+```
+
+or (for date range):
+
+```json
+{
+  "checkIns": []
 }
 ```
 
@@ -442,14 +511,21 @@ Content-Type: application/json
 Cookie: better-auth.session_token=<session_token>
 
 {
-  "isActive": true
+  "isActive": true,
+  "date": "2025-12-22"
 }
 ```
+
+**Request Parameters:**
+
+- `isActive` (required, boolean): `true` if period is active, `false` if not
+- `date` (required): Date in YYYY-MM-DD format (in user's local timezone)
 
 **Notes:**
 
 - Only Her can create period check-ins
-- Binary status: `true` if period is active today, `false` if not
+- If check-in already exists for the specified date, it will be updated
+- The date should be sent in the user's local timezone (YYYY-MM-DD format)
 - Period check-ins are used to calculate cycle phases and track history
 
 **Response:**
@@ -474,18 +550,21 @@ Cookie: better-auth.session_token=<session_token>
 }
 ```
 
-### Get Recent Period Check-Ins
+### Get Period Check-In(s)
 
 ```
-GET /api/period-checkin?limit=30
+GET /api/period-checkin
 Cookie: better-auth.session_token=<session_token>
 ```
 
-**Query Parameters:**
+**Query Parameters (all optional):**
 
-- `limit`: Number of check-ins to return (default: 30)
+- `date`: Get check-in for a specific date (format: YYYY-MM-DD)
+- `startDate` & `endDate`: Get all check-ins within a date range (format: YYYY-MM-DD)
+- `limit`: Number of check-ins to return when using default mode (default: 100)
+- No parameters: Returns recent period check-ins with default limit
 
-**Response:**
+**Response (no parameters - recent check-ins with limit):**
 
 ```json
 {
@@ -503,6 +582,64 @@ Cookie: better-auth.session_token=<session_token>
       "createdAt": "2025-12-15T08:00:00.000Z"
     }
   ]
+}
+```
+
+**Response (with date parameter):**
+
+```
+GET /api/period-checkin?date=2025-12-15
+```
+
+```json
+{
+  "checkIn": {
+    "id": "checkin_id",
+    "date": "2025-12-15",
+    "isActive": true,
+    "createdAt": "2025-12-15T08:00:00.000Z"
+  }
+}
+```
+
+**Response (with date range):**
+
+```
+GET /api/period-checkin?startDate=2025-12-01&endDate=2025-12-31
+```
+
+```json
+{
+  "checkIns": [
+    {
+      "id": "checkin_1",
+      "date": "2025-12-16",
+      "isActive": true,
+      "createdAt": "2025-12-16T08:00:00.000Z"
+    },
+    {
+      "id": "checkin_2",
+      "date": "2025-12-15",
+      "isActive": true,
+      "createdAt": "2025-12-15T08:00:00.000Z"
+    }
+  ]
+}
+```
+
+If no check-in exists for a specific date:
+
+```json
+{
+  "checkIn": null
+}
+```
+
+or (for date range with no results):
+
+```json
+{
+  "checkIns": []
 }
 ```
 

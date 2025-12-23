@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { moodCheckIns } from "@/lib/db/schema";
 import { getUserCoupleContext, requireHerRole } from "@/lib/couple-auth";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface MoodCheckIn {
@@ -25,11 +25,26 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { mood, note } = body;
+    const { mood, note, date } = body;
 
     if (!mood) {
       return NextResponse.json(
         { error: "Mood is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!date) {
+      return NextResponse.json(
+        { error: "Date is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return NextResponse.json(
+        { error: "Date must be in YYYY-MM-DD format" },
         { status: 400 }
       );
     }
@@ -47,16 +62,14 @@ export async function POST(req: NextRequest) {
     // Verify user has "her" role
     await requireHerRole(session.user.id, context.coupleId);
 
-    const today = new Date().toISOString().split("T")[0];
-
-    // Check if check-in already exists for today
+    // Check if check-in already exists for this date
     const existing = await db
       .select()
       .from(moodCheckIns)
       .where(
         and(
           eq(moodCheckIns.coupleId, context.coupleId),
-          eq(moodCheckIns.date, today)
+          eq(moodCheckIns.date, date)
         )
       )
       .limit(1);
@@ -76,7 +89,7 @@ export async function POST(req: NextRequest) {
         checkIn: {
           id: existing[0].id,
           coupleId: context.coupleId,
-          date: today,
+          date,
           mood,
           note: note || null,
           createdAt: existing[0].createdAt,
@@ -87,13 +100,14 @@ export async function POST(req: NextRequest) {
 
     // Create new check-in
     const checkInId = randomUUID();
+    const now = new Date();
     await db.insert(moodCheckIns).values({
       id: checkInId,
       coupleId: context.coupleId,
-      date: today,
+      date,
       mood,
       note: note || null,
-      createdAt: new Date(),
+      createdAt: now,
     });
 
     return NextResponse.json({
@@ -101,10 +115,10 @@ export async function POST(req: NextRequest) {
       checkIn: {
         id: checkInId,
         coupleId: context.coupleId,
-        date: today,
+        date,
         mood,
         note: note || null,
-        createdAt: new Date(),
+        createdAt: now,
       },
       updated: false,
     });
@@ -125,7 +139,8 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET /api/mood-checkin - Get latest mood check-in (Both can read)
+// GET /api/mood-checkin - Get mood check-in(s) (Both can read)
+// Supports query params: date (single date), startDate & endDate (date range)
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
 
@@ -143,7 +158,67 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get latest mood check-in
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get("date");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    // If specific date is requested
+    if (date) {
+      const checkIn = await db
+        .select()
+        .from(moodCheckIns)
+        .where(
+          and(
+            eq(moodCheckIns.coupleId, context.coupleId),
+            eq(moodCheckIns.date, date)
+          )
+        )
+        .limit(1);
+
+      if (checkIn.length === 0) {
+        return NextResponse.json({ checkIn: null });
+      }
+
+      return NextResponse.json({
+        checkIn: {
+          id: checkIn[0].id,
+          coupleId: checkIn[0].coupleId,
+          date: checkIn[0].date,
+          mood: checkIn[0].mood,
+          note: checkIn[0].note,
+          createdAt: checkIn[0].createdAt,
+        },
+      });
+    }
+
+    // If date range is requested
+    if (startDate && endDate) {
+      const checkIns = await db
+        .select()
+        .from(moodCheckIns)
+        .where(
+          and(
+            eq(moodCheckIns.coupleId, context.coupleId),
+            gte(moodCheckIns.date, startDate),
+            lte(moodCheckIns.date, endDate)
+          )
+        )
+        .orderBy(desc(moodCheckIns.date));
+
+      return NextResponse.json({
+        checkIns: checkIns.map((checkIn) => ({
+          id: checkIn.id,
+          coupleId: checkIn.coupleId,
+          date: checkIn.date,
+          mood: checkIn.mood,
+          note: checkIn.note,
+          createdAt: checkIn.createdAt,
+        })),
+      });
+    }
+
+    // Default: Get latest mood check-in
     const latest = await db
       .select()
       .from(moodCheckIns)
